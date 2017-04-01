@@ -24,3 +24,7 @@ bool operator!=(const Location& lhs, const Location& rhs) {
 bool operator>(const priorityElement& lhs, const priorityElement& rhs) {
   return lhs.priority > rhs.priority;
 }
+
+bool operator<(const priorityElement& lhs, const priorityElement& rhs) {
+  return lhs.priority < rhs.priority;
+}

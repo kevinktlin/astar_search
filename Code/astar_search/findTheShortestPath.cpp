@@ -102,25 +102,57 @@ void findTheShortestPath::aStarSearch
 			}
 			else if(hummer_usage_table.find(currentNode.tableID) != hummer_usage_table.end() &&
 					hummer_usage_table[currentNode.tableID]< maxHummerNum){
+				double new_cost;
 				if(path_prop_table.find(indexNext) == path_prop_table.end() &&
 						path_prop_table.find(indexNext) == path_prop_table.end()) {
 					path_prop_table[indexNext] = path_prop_table[currentNode.tableID];
+
+					new_cost = path_prop_table[indexNext][indexCurr].cost_so_far + graph.cost(currentLoc, nextLoc);
+					hummer_usage_table[indexNext] = 1;
+
+					if (path_prop_table[indexNext][indexNext].cost_so_far < 0 || new_cost < path_prop_table[indexNext][indexNext].cost_so_far) {
+						path_prop_table[indexNext][indexNext].cost_so_far = new_cost;
+						double priority = new_cost + heuristic(nextLoc, goal);
+						tmp.loc = nextLoc;
+						tmp.priority = priority;
+						tmp.tableID = indexNext;
+						frontEdge. push(tmp);
+						path_prop_table[indexNext][indexNext].came_from = currentLoc;
+					}
 				}
 				else if(path_prop_table.find(indexNext) != path_prop_table.end()) {
+
+					new_cost = path_prop_table[indexNext][indexCurr].cost_so_far + graph.cost(currentLoc, nextLoc);
+					hummer_usage_table[indexNext] = 1;
+
 					// get the optimal table for different break time, but same break wall
 					path_prop_table[indexNext] = mergePathProp(path_prop_table[indexNext], path_prop_table[currentNode.tableID]);
+
+
+					if (path_prop_table[indexNext][indexNext].cost_so_far < 0 || new_cost < path_prop_table[indexNext][indexNext].cost_so_far) {
+						path_prop_table[indexNext][indexNext].cost_so_far = new_cost;
+						double priority = new_cost + heuristic(nextLoc, goal);
+						tmp.loc = nextLoc;
+						tmp.priority = priority;
+						tmp.tableID = indexNext;
+						frontEdge. push(tmp);
+						path_prop_table[indexNext][indexNext].came_from = currentLoc;
+					}
 				}
 				else {
 
 				}
+/*
 
 				double new_cost = path_prop_table[indexNext][indexCurr].cost_so_far + graph.cost(currentLoc, nextLoc);
 				hummer_usage_table[indexNext] = 1;
+*/
 
 #if defined DEBUG
 				std::cout << nextLoc << ", new cost:" << new_cost << ", cost_so_far:" << path_prop_table[currentNode.tableID][indexNext].cost_so_far << std::endl;
 				std::cout << "new table id:" << indexNext << ", Hummer usage:" << hummer_usage_table[indexNext] << std::endl;
 #endif
+/*
 
 				if (path_prop_table[indexNext][indexNext].cost_so_far < 0 || new_cost < path_prop_table[indexNext][indexNext].cost_so_far) {
 					path_prop_table[indexNext][indexNext].cost_so_far = new_cost;
@@ -131,6 +163,8 @@ void findTheShortestPath::aStarSearch
 					frontEdge. push(tmp);
 					path_prop_table[indexNext][indexNext].came_from = currentLoc;
 				}
+
+*/
 			}
 			else {
 
