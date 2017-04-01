@@ -26,24 +26,12 @@ void findTheShortestPath::resetContainer(gridHandler& graph) {
 	defaultLoc.y = -1;
 
 	path_prop_table[0].resize(graph.getHeight()*graph.getWidth());
-	came_from_table[0].resize(graph.getHeight()*graph.getWidth());
-	cost_so_far_table[0].resize(graph.getHeight()*graph.getWidth());
 
 	// set all cost to invalid
 	for(int i=0; i < path_prop_table[0].size(); i++ ) {
-		path_prop_table[0][i].came_from = -100;
-		path_prop_table[0][i].came_from_table = defaultLoc;
+		path_prop_table[0][i].cost_so_far = -100;
+		path_prop_table[0][i].came_from = defaultLoc;
 		//cout <<"cost_so_far "<< i << ':' << cost_so_far_table[0][i] << endl;
-	}
-
-	for(int i=0; i < cost_so_far_table[0].size(); i++ ) {
-		cost_so_far_table[0][i] = -100;
-		//cout <<"cost_so_far "<< i << ':' << cost_so_far_table[0][i] << endl;
-	}
-
-	for(int i=0; i < came_from_table[0].size(); i++ ) {
-		came_from_table[0][i] = defaultLoc;
-		//cout <<"came_from_table "<< i << ':' << came_from_table[0][i] << endl;
 	}
 
 	hummer_usage_table[0] = 0;
@@ -68,9 +56,6 @@ void findTheShortestPath::aStarSearch
 
 	path_prop_table[0][start_index].came_from = start;
 	path_prop_table[0][start_index].cost_so_far = 0;
-
-	came_from_table[0][start_index] = start;
-	cost_so_far_table[0][start_index] = 0;
 
 	while(!frontEdge.empty()) {
 		priorityElement currentNode = frontEdge.top();
@@ -99,49 +84,52 @@ void findTheShortestPath::aStarSearch
 			int indexCurr = currentLoc.x+currentLoc.y*graph.getWidth();
 			int indexNext = nextLoc.x+nextLoc.y*graph.getWidth();
 			if(graph.goable(nextLoc)) {
-				double new_cost = cost_so_far_table[currentNode.tableID][indexCurr] + graph.cost(currentLoc, nextLoc);
+				double new_cost = path_prop_table[currentNode.tableID][indexCurr].cost_so_far + graph.cost(currentLoc, nextLoc);
 
 #if defined DEBUG
 				//std::cout << nextLoc << ", new cost:" << new_cost << ", cost_so_far:" << cost_so_far[indexNext] << std::endl;
 #endif
 
-				if (cost_so_far_table[currentNode.tableID][indexNext] < 0 || new_cost < cost_so_far_table[currentNode.tableID][indexNext]) {
-					cost_so_far_table[currentNode.tableID][indexNext] = new_cost;
+				if (path_prop_table[currentNode.tableID][indexNext].cost_so_far < 0 || new_cost < path_prop_table[currentNode.tableID][indexNext].cost_so_far) {
+					path_prop_table[currentNode.tableID][indexNext].cost_so_far = new_cost;
 					double priority = new_cost + heuristic(nextLoc, goal);
 					tmp.loc = nextLoc;
 					tmp.priority = priority;
 					tmp.tableID = currentNode.tableID;
 					frontEdge.push(tmp);
-					came_from_table[currentNode.tableID][indexNext] = currentLoc;
+					path_prop_table[currentNode.tableID][indexNext].came_from = currentLoc;
 				}
 			}
 			else if(hummer_usage_table.find(currentNode.tableID) != hummer_usage_table.end() &&
 					hummer_usage_table[currentNode.tableID]< maxHummerNum){
-				if(cost_so_far_table.find(indexNext) == cost_so_far_table.end() &&
-						came_from_table.find(indexNext) == came_from_table.end()) {
-					cost_so_far_table[indexNext] = cost_so_far_table[currentNode.tableID];
-					came_from_table[indexNext]= came_from_table[currentNode.tableID];
+				if(path_prop_table.find(indexNext) == path_prop_table.end() &&
+						path_prop_table.find(indexNext) == path_prop_table.end()) {
+					path_prop_table[indexNext] = path_prop_table[currentNode.tableID];
+				}
+				else if(path_prop_table.find(indexNext) != path_prop_table.end()) {
+					// get the optimal table for different break time, but same break wall
+					path_prop_table[indexNext] = mergePathProp(path_prop_table[indexNext], path_prop_table[currentNode.tableID]);
 				}
 				else {
-					// get the optimal table for different break time, but same break wall
+
 				}
 
-				double new_cost = cost_so_far_table[indexNext][indexCurr] + graph.cost(currentLoc, nextLoc);
+				double new_cost = path_prop_table[indexNext][indexCurr].cost_so_far + graph.cost(currentLoc, nextLoc);
 				hummer_usage_table[indexNext] = 1;
 
 #if defined DEBUG
-				std::cout << nextLoc << ", new cost:" << new_cost << ", cost_so_far:" << cost_so_far_table[currentNode.tableID][indexNext] << std::endl;
+				std::cout << nextLoc << ", new cost:" << new_cost << ", cost_so_far:" << path_prop_table[currentNode.tableID][indexNext].cost_so_far << std::endl;
 				std::cout << "new table id:" << indexNext << ", Hummer usage:" << hummer_usage_table[indexNext] << std::endl;
 #endif
 
-				if (cost_so_far_table[indexNext][indexNext] < 0 || new_cost < cost_so_far_table[indexNext][indexNext]) {
-					cost_so_far_table[indexNext][indexNext] = new_cost;
+				if (path_prop_table[indexNext][indexNext].cost_so_far < 0 || new_cost < path_prop_table[indexNext][indexNext].cost_so_far) {
+					path_prop_table[indexNext][indexNext].cost_so_far = new_cost;
 					double priority = new_cost + heuristic(nextLoc, goal);
 					tmp.loc = nextLoc;
 					tmp.priority = priority;
 					tmp.tableID = indexNext;
 					frontEdge. push(tmp);
-					came_from_table[indexNext][indexNext] = currentLoc;
+					path_prop_table[indexNext][indexNext].came_from = currentLoc;
 				}
 			}
 			else {
@@ -152,19 +140,33 @@ void findTheShortestPath::aStarSearch
 }
 
 
+std::vector<pathProp> findTheShortestPath::mergePathProp(const std::vector<pathProp> path_prop_1, const std::vector<pathProp> path_prop_2) {
+	std::vector<pathProp> path_prop_optimal;
+	if(path_prop_1.size() != path_prop_2.size())	return path_prop_optimal;
+	for(int i=0; i < path_prop_1.size(); i++) {
+		if(path_prop_1[i].cost_so_far >= path_prop_2[i].cost_so_far && path_prop_2[i].cost_so_far > 0)
+			path_prop_optimal.push_back(path_prop_2[i]);
+		else if(path_prop_1[i].cost_so_far < path_prop_2[i].cost_so_far && path_prop_1[i].cost_so_far > 0)
+			path_prop_optimal.push_back(path_prop_1[i]);
+		else
+			path_prop_optimal.push_back(path_prop_1[i]);
+	}
+	return path_prop_optimal;
+}
+
 std::vector<Location> findTheShortestPath::reconstructPath(gridHandler &graph, Location start, Location goal) {
 	std::vector<Location> path;
 	Location current = goal;
 	int currentIndex = current.x + current.y*graph.getWidth();
 
-	int minCostTableID = cost_so_far_table.size();
+	int minCostTableID = 0;
 	double minCost = 100000;
 	// find the best solution of all cost_so_far
-	for(int i=0; i < cost_so_far_table.size(); i++) {
-		if(cost_so_far_table[i][goal.x + goal.y*graph.getWidth()] < minCost &&
-				cost_so_far_table[i][goal.x + goal.y*graph.getWidth()] > 0) {
-			minCost = cost_so_far_table[i][goal.x + goal.y*graph.getWidth()];
-			minCostTableID = i;
+	for(auto const &path_prop : path_prop_table) {
+		if(path_prop.second[goal.x + goal.y*graph.getWidth()].cost_so_far < minCost &&
+				path_prop.second[goal.x + goal.y*graph.getWidth()].cost_so_far > 0) {
+			minCost = path_prop.second[goal.x + goal.y*graph.getWidth()].cost_so_far;
+			minCostTableID = path_prop.first;
 		}
 	}
 
@@ -175,11 +177,11 @@ std::vector<Location> findTheShortestPath::reconstructPath(gridHandler &graph, L
 	std::cout << "min cost table id:" << minCostTableID << std::endl;
 #endif
 
-	if(came_from_table[minCostTableID][currentIndex].x < 0 || came_from_table[minCostTableID][currentIndex].y < 0)	return path;
+	if(path_prop_table[minCostTableID][currentIndex].came_from.x < 0 || path_prop_table[minCostTableID][currentIndex].came_from.y < 0)	return path;
 
 	while (current != start) {
 		//cout << "path index:" << currentIndex << endl;
-		current = came_from_table[minCostTableID][currentIndex];
+		current = path_prop_table[minCostTableID][currentIndex].came_from;
 		path.push_back(current);
 		currentIndex = current.x + current.y*graph.getWidth();
 	}
@@ -196,17 +198,3 @@ double findTheShortestPath::heuristic(Location currLoc, Location goal) {
 	else	return std::min(delta_x, delta_y)*1.414 + abs(delta_x - delta_y);
 }
 
-void findTheShortestPath::printCameFrom(void) {
-	for(int i = 0; i < came_from_table.size(); i++)
-		for(int j = 0; j < came_from_table[i].size(); j++)
-			std::cout << came_from_table[i][j] << ' ';
-		std::cout << std::endl;
-	std::cout << std::endl;
-}
-
-void findTheShortestPath::printCost(void) {
-	for(int i=0; i < cost_so_far_table.size(); i++)
-		for(int j=0; j < cost_so_far_table[i].size(); j++)
-			std::cout << cost_so_far_table[i][j] << ' ';
-	std::cout << std::endl;
-}
